@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Microstock Metadata Generator</title>
+<style>
+:root{--bg:#f5f5f7;--card:#fff;--ink:#1d1d1f;--mute:#6e6e73;--line:rgba(0,0,0,.08);--fill:#f2f2f4;--acc:#0071e3;--warn:#b25e00;--bad:#d70015;--ok:#248a3d;--glass:rgba(255,255,255,.72);--sh:0 1px 2px rgba(0,0,0,.04),0 8px 30px rgba(0,0,0,.06)}
+@media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--ink:#f5f5f7;--mute:#98989d;--line:rgba(255,255,255,.1);--fill:#2c2c2e;--acc:#2997ff;--warn:#ffb340;--bad:#ff6961;--glass:rgba(28,28,30,.72);--sh:0 8px 30px rgba(0,0,0,.5)}}
+[hidden]{display:none!important}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.47 -apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.011em}
+.nav{position:sticky;top:0;z-index:20;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 max(20px,calc((100% - 980px)/2));background:var(--glass);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line);font-size:14px}
+.nav b{font-weight:600}.nav span{color:var(--mute)}
+.hero{text-align:center;padding:72px 20px 40px;max-width:820px;margin:0 auto}
+.hero h1{font-size:clamp(40px,7vw,72px);line-height:1.05;letter-spacing:-.03em;font-weight:700;margin:0 0 16px}
+.hero p{font-size:clamp(18px,2.4vw,24px);line-height:1.35;color:var(--mute);margin:0 auto;max-width:640px;letter-spacing:-.015em}
+main{max-width:980px;margin:0 auto;padding:0 20px 140px}
+.panel{background:var(--card);border-radius:22px;padding:28px;margin-bottom:20px;box-shadow:var(--sh)}
+#drop{text-align:center;padding:56px 24px;border:2px dashed var(--line);box-shadow:none;background:transparent;color:var(--mute);transition:background .2s,border-color .2s,transform .2s}
+#drop.hov{border-color:var(--acc);background:var(--card);transform:scale(1.01)}
+#drop .big{display:block;font-size:28px;font-weight:600;color:var(--ink);letter-spacing:-.02em;margin-bottom:6px}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+label{display:block;font-size:13px;color:var(--mute);margin:0 0 6px 2px;font-weight:500}
+input,select,textarea{font:inherit;font-size:15px;color:var(--ink);background:var(--fill);border:1px solid transparent;border-radius:12px;padding:11px 14px;transition:border-color .15s,box-shadow .15s}
+input,select{min-width:210px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 22%,transparent)}
+button{font:inherit;font-size:15px;color:var(--acc);background:transparent;border:0;border-radius:980px;padding:10px 20px;cursor:pointer;transition:background .15s,transform .1s,opacity .15s}
+button:hover{background:color-mix(in srgb,var(--acc) 10%,transparent)}button:active{transform:scale(.97)}
+button:focus-visible{outline:3px solid color-mix(in srgb,var(--acc) 45%,transparent);outline-offset:2px}
+button.p{background:var(--acc);color:#fff;font-weight:500;padding:11px 26px}button.p:hover{background:var(--acc);opacity:.88}
+#drop button{padding:4px 6px;display:inline;font-size:inherit}
+.seg{display:inline-flex;background:var(--fill);border-radius:12px;padding:3px;gap:2px}
+.seg button{border-radius:9px;padding:8px 14px;color:var(--ink);font-size:14px}
+.seg button:hover{background:transparent}.seg button.on{background:var(--card);box-shadow:0 1px 4px rgba(0,0,0,.14);font-weight:600}
+#pnote{margin:16px 2px 0!important}
+#bar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:min(940px,calc(100% - 32px));margin:0;padding:12px 16px 12px 24px;border-radius:26px;background:var(--glass);backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);z-index:30;align-items:center;gap:12px}
+#bar select{min-width:150px;padding:8px 12px}#bar label{display:inline;margin:0 6px 0 0}
+.item{display:grid;grid-template-columns:150px 1fr;gap:24px;content-visibility:auto;contain-intrinsic-size:auto 320px}
+.item img{width:150px;height:150px;object-fit:cover;border-radius:16px;background:var(--fill)}
+.item>div>b{font-size:17px;font-weight:600;display:block;margin-bottom:8px;word-break:break-all}
+.tag{display:inline-block;font-size:13px;padding:3px 11px;border-radius:980px;background:var(--fill);color:var(--mute);margin:0 6px 6px 0}
+.tag.tp{background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-weight:500}
+.flag{color:var(--warn);font-size:14px;margin-top:6px}.err{color:var(--bad)}
+.f{margin:12px 0 0}.f b{font-size:13px;color:var(--mute);font-weight:500;display:flex;justify-content:space-between;margin:0 2px 6px}
+.f textarea{width:100%;resize:vertical;min-height:44px;line-height:1.4}
+.cnt{font-size:13px;color:var(--mute);font-weight:400}.cnt.over{color:var(--bad)}
+details{margin-top:14px}details summary{cursor:pointer;color:var(--acc);font-size:15px}
+pre{white-space:pre-wrap;font:14px/1.5 inherit;font-family:inherit;color:var(--mute);background:var(--fill);padding:14px;border-radius:12px;margin:12px 0 0}
+@media(max-width:640px){.item{grid-template-columns:1fr}.item img{width:100%;height:200px}.hero{padding-top:48px}.panel{padding:20px}#bar{border-radius:22px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<nav class="nav"><b>Metadata Studio</b><span id="navp"></span></nav>
+<header class="hero"><h1>Metadata that ranks.</h1>
+<p>Drop your images. It tells a single background from a template pack, then writes the titles and keywords buyers actually search for.</p></header>
+<main>
+<section class="panel" id="drop" tabindex="0"><span class="big">Drop images here</span>or <button id="pick">choose files</button><input id="files" type="file" accept="image/*" multiple hidden></section>
+
+<section class="panel"><div class="row">
+ <div><label for="prov">Provider</label><select id="prov"></select></div>
+ <div><label for="key">API key</label><input id="key" type="password" autocomplete="off" placeholder="Paste your key"></div>
+ <div><label for="model">Model</label><input id="model"></div>
+ <div id="burlw"><label for="burl">Base URL</label><input id="burl"></div>
+</div>
+<div style="margin-top:22px"><label>Content type</label><div class="seg" id="hint">
+ <button data-v="" class="on">Auto-detect</button><button data-v="single_asset">Single background</button><button data-v="template_pack">Template / design pack</button></div></div>
+<p class="cnt" id="pnote"></p></section>
+
+<div class="panel row" id="bar" hidden>
+ <button class="p" id="run">Generate metadata</button>
+ <span class="cnt" id="stat"></span><span style="flex:1"></span>
+ <div><label for="plat">Export</label><select id="plat"><option value="adobe">Adobe Stock</option><option value="shutterstock">Shutterstock</option><option value="freepik">Freepik</option><option value="istock">iStock / Getty</option></select></div>
+ <button id="exp">Download CSV</button>
+</div>
+<div id="list"></div>
+</main>
+
+<script id="core">
+/* ---------- Provider registry ---------- */
+const PROVIDERS=[
+ {id:"deepseek",label:"DeepSeek",wire:"openai",baseUrl:"https://api.deepseek.com/v1",model:"deepseek-flash",
+  note:"Default. Native vision via image_url; the old deepseek-v4-flash-vision-exp ID also still routes here."},
+ {id:"gemini",label:"Google Gemini",wire:"gemini",baseUrl:"https://generativelanguage.googleapis.com/v1beta",model:"gemini-2.5-flash"},
+ {id:"anthropic",label:"Anthropic Claude",wire:"anthropic",baseUrl:"https://api.anthropic.com/v1",model:"claude-sonnet-5"},
+ {id:"openai",label:"OpenAI",wire:"openai",baseUrl:"https://api.openai.com/v1",model:"gpt-4o"},
+ ...["xKiro","Vyce","Helyx","AgentRouter","SeekAi"].map(n=>({id:n.toLowerCase(),label:n+" (gateway)",wire:"openai",baseUrl:"",model:"",custom:true,note:"OpenAI-compatible gateway: enter its base URL and model."}))
+];
+const DEFAULT_PROVIDER="deepseek";
+
+/* ---------- Platform limits ---------- */
+const LIM={adobe:{title:70,kw:49},shutterstock:{desc:200,kw:50},freepik:{title:70,kw:30},istock:{title:70,desc:200,kw:50}};
+const FILLER=/^(stunning|beautiful|amazing|high quality|hd|4k|best|nice|perfect|unique|awesome|gorgeous|great|wonderful|premium|professional|creative)$/i;
+const TP_CATEGORY="Graphic Resources",SA_CATEGORY="Backgrounds/Textures";
+
+/* ---------- System prompt ---------- */
+/* NOTE: rules A-G are reconstructed from the brief; edit RULES_AG to match your original wording. */
+const RULES_AG=`SINGLE_ASSET RULES (A-G):
+A. COLORS: include 2-5 accurate dominant color words in the keywords (and in the title where natural).
+B. USE-CASE POOL: include general use-case keywords that genuinely fit: background, wallpaper, backdrop, banner, website, presentation, social media, print, packaging, poster, card, texture, pattern.
+C. NO FILLER: never use filler or subjective words (stunning, beautiful, amazing, high quality, 4k, perfect, unique, best) and never use brand names or trademarks.
+D. NO CONTRADICTIONS: never include a term that conflicts with the image (wrong color, "photo" for vector art, "text" when none is visible, etc.).
+E. TAGS: 25-49 keywords ordered by importance, single words or short phrases, no duplicates and no singular/plural duplicates.
+F. ACCURACY: describe only what is visible; no people, places or brands unless clearly identifiable.
+G. TITLE: one natural sentence describing the ONE visual, at most 70 characters for Adobe/Freepik (real ceiling), not a keyword dump. Shutterstock description at most 200 characters.`;
+const RULES_HK=`TEMPLATE_PACK RULES (use A-F above, plus H-K; H supersedes G's single-scene framing but keeps its character limits):
+H. COLLECTION-STYLE TITLE: describe what the SET contains, not one scene: list 2-4 of the most visually distinct elements present (e.g. "flowing waves, 3D spheres, mesh lines, geometric bars"), the overall style/color direction, and what kind of templates they are (poster templates, cover designs, banner set...). Natural sentence, not a keyword dump. Adobe/Freepik titles must be at most 70 characters: if the fuller description does not fit, keep the 2-3 most commercially distinctive elements and drop the rest rather than exceeding the limit.
+I. DESIGN-PURPOSE KEYWORDS: in addition to rule B use-cases and rule A colors, include terms for what the pack is for and made of, from (use only what fits): template, poster, layout, cover, flier, booklet, banner, collection, set, presentation, mockup, print, editable design, vector template, business card, brochure.
+J. VECTOR-TEXT WORDING: for outlined/customizable text write "replaceable text", never "editable text" (Adobe guidance). "Editable" is fine for shapes/colors in general, not for text.
+K. CATEGORY: category_suggestion must be "Graphic Resources" (or the platform's closest equivalent), never Backgrounds/Textures. If the file appears to be a vector, add a flag such as "Looks like a vector template: confirm actual file type (AI/EPS) before export" because a JPEG preview cannot reveal the real format.`;
+function buildSystem(hint){
+ return `You are a microstock metadata specialist. Follow these steps.
+STEP 1 - CLASSIFY the image as "single_asset" (one background/texture/photo/illustration used as-is) or "template_pack" (a composed layout, poster mockup, or multi-element design composition arranged as a template/cover-style layout; something a designer would call a template, not a plain background).${hint?` The user has already specified: "${hint}". Use that value.`:" No hint was given; decide from the image."}
+STEP 2 - Generate metadata using the matching rule set.
+${RULES_AG}
+${RULES_HK}
+SELF-CHECK before answering: single_asset output must satisfy A-G. template_pack output must satisfy A-F plus H-K (title lists 2-4 contained elements, fits the character limit, has design-purpose keywords, says "replaceable text" not "editable text", category is Graphic Resources). Confirm content_type is stated correctly.
+Return ONLY JSON, no markdown:
+{"content_type":"single_asset|template_pack","description":"...","platforms":{"adobe":{"title":"","keywords":[]},"shutterstock":{"description":"","keywords":[]},"freepik":{"title":"","keywords":[]},"istock":{"title":"","description":"","keywords":[]}},"category_suggestion":"...","flags":[]}`;
+}
+
+/* ---------- Validation layer ---------- */
+function cutWords(s,n){s=String(s||"").replace(/\s+/g," ").trim();if(s.length<=n)return s;let c=s.slice(0,n+1),i=c.lastIndexOf(" ");c=(i>n*0.6?c.slice(0,i):s.slice(0,n));return c.replace(/[,;:\-\s]+$/,"")}
+function fixText(s,type){if(type!=="template_pack")return s;return s.replace(/\beditable\s+(text|font|fonts|typography|lettering|type|copy)\b/gi,"replaceable $1")}
+function cleanKw(a,max,type){
+ const seen=new Set(),out=[];
+ for(let k of (Array.isArray(a)?a:String(a||"").split(/[,;]/))){
+  k=fixText(String(k).toLowerCase().replace(/["']/g,"").replace(/\s+/g," ").trim(),type);
+  if(!k||FILLER.test(k))continue;
+  const stem=k.replace(/(es|s)$/,"");if(seen.has(k)||seen.has(stem))continue;
+  seen.add(k);seen.add(stem);out.push(k);if(out.length>=max)break}
+ return out}
+function normalize(raw,hint){
+ let d=raw;if(typeof raw==="string"){const m=raw.replace(/```json|```/g,"").match(/\{[\s\S]*\}/);if(!m)throw new Error("No JSON in model reply");d=JSON.parse(m[0])}
+ const flags=Array.isArray(d.flags)?d.flags.map(String):[];
+ let type=d.content_type;
+ if(type!=="single_asset"&&type!=="template_pack"){type="single_asset";flags.push("Model gave no valid content_type; defaulted to single_asset")}
+ if(hint&&hint!==type){flags.push(`Model classified as ${type}; overridden by your toggle (${hint})`);type=hint}
+ const P=d.platforms||{},o={};
+ const title=(t,n,pl)=>{t=fixText(String(t||""),type);const c=cutWords(t,n);if(c!==t.trim())flags.push(`${pl} title trimmed to ${n} chars`);return c};
+ o.adobe={title:title(P.adobe?.title,LIM.adobe.title,"Adobe"),keywords:cleanKw(P.adobe?.keywords,LIM.adobe.kw,type)};
+ o.shutterstock={description:cutWords(fixText(P.shutterstock?.description||"",type),LIM.shutterstock.desc),keywords:cleanKw(P.shutterstock?.keywords,LIM.shutterstock.kw,type)};
+ o.freepik={title:title(P.freepik?.title,LIM.freepik.title,"Freepik"),keywords:cleanKw(P.freepik?.keywords,LIM.freepik.kw,type)};
+ o.istock={title:title(P.istock?.title,LIM.istock.title,"iStock"),description:cutWords(fixText(P.istock?.description||"",type),LIM.istock.desc),keywords:cleanKw(P.istock?.keywords,LIM.istock.kw,type)};
+ let cat=String(d.category_suggestion||"");
+ if(type==="template_pack"){
+  if(!/graphic resources|graphics|templates?/i.test(cat)){cat=TP_CATEGORY;flags.push("Category corrected to Graphic Resources")}
+  for(const pl of Object.keys(o)){const k=o[pl].keywords;if(!k.some(x=>/template/.test(x)))flags.push(`${pl}: no "template" keyword present`)}
+  if(!flags.some(f=>/vector|AI\/EPS/i.test(f)))flags.push("Possible vector template: confirm actual file type (AI/EPS) before export");
+ }else if(!cat||/graphic resources/i.test(cat))cat=SA_CATEGORY;
+ if(o.adobe.keywords.length<25)flags.push(`Adobe has only ${o.adobe.keywords.length} keywords (aim for 25+)`);
+ return{content_type:type,description:String(d.description||""),platforms:o,category_suggestion:cat,flags:[...new Set(flags)]};
+}
+
+/* ---------- CSV ---------- */
+const q=s=>'"'+String(s).replace(/"/g,'""')+'"';
+const sq=s=>"'"+String(s).replace(/'/g,"''")+"'";
+function buildCsv(items,pl){
+ const ok=items.filter(i=>i.meta),warn=[];let rows=[];
+ for(const it of ok){const m=it.meta,p=m.platforms;
+  if(pl==="adobe"){let fn=it.name;if(fn.length>30){warn.push(`"${fn}" exceeds Adobe's 30-char filename cap`);}rows.push([fn,p.adobe.title,p.adobe.keywords.join(", "),m.category_suggestion].map(q).join(","))}
+  else if(pl==="shutterstock")rows.push([it.name,p.shutterstock.description,p.shutterstock.keywords.join(", "),m.category_suggestion].map(q).join(","));
+  else if(pl==="freepik")rows.push([it.name,p.freepik.title,p.freepik.keywords.join(", ")].map(sq).join(";"));
+  else rows.push([it.name,p.istock.description,"",p.istock.title,p.istock.keywords.join(", ")].map(q).join(","));}
+ const head={adobe:'Filename,Title,Keywords,Category',shutterstock:'Filename,Description,Keywords,Categories',freepik:"'Filename';'Title';'Keywords'",istock:'file name,description,country,title,keywords'}[pl];
+ return{csv:[head,...rows].join("\r\n"),warn};
+}
+
+/* ---------- Provider adapters ---------- */
+async function callProvider(p,cfg,system,text,dataUrl){
+ const b64=dataUrl.split(",")[1],mime=dataUrl.slice(5,dataUrl.indexOf(";"));
+ const base=(cfg.baseUrl||p.baseUrl).replace(/\/$/,"");let r,j;
+ if(p.wire==="openai"){
+  r=await fetch(base+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+cfg.key},
+   body:JSON.stringify({model:cfg.model,temperature:0.4,response_format:{type:"json_object"},messages:[{role:"system",content:system},{role:"user",content:[{type:"text",text},{type:"image_url",image_url:{url:dataUrl}}]}]})});
+  j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);return j.choices[0].message.content}
+ if(p.wire==="gemini"){
+  r=await fetch(`${base}/models/${encodeURIComponent(cfg.model)}:generateContent?key=${encodeURIComponent(cfg.key)}`,{method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:[{role:"user",parts:[{text},{inline_data:{mime_type:mime,data:b64}}]}],generationConfig:{responseMimeType:"application/json",temperature:0.4}})});
+  j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);return j.candidates[0].content.parts.map(x=>x.text||"").join("")}
+ r=await fetch(base+"/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":cfg.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+  body:JSON.stringify({model:cfg.model,max_tokens:2000,system,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text}]}]})});
+ j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);return j.content.map(x=>x.text||"").join("")
+}
+</script>
+
+<script id="ui">
+const $=id=>document.getElementById(id);
+const store={get(k){try{return JSON.parse(localStorage.getItem(k)||"null")}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let items=[],hint="";
+const cfgs=store.get("cfgs")||{};
+$("prov").innerHTML=PROVIDERS.map(p=>`<option value="${p.id}">${p.label}${p.id===DEFAULT_PROVIDER?" (default)":""}</option>`).join("");
+$("prov").value=store.get("prov")||DEFAULT_PROVIDER;
+const cur=()=>PROVIDERS.find(p=>p.id===$("prov").value);
+function loadCfg(){const p=cur(),c=cfgs[p.id]||{};$("key").value=c.key||"";$("model").value=c.model||p.model;$("burl").value=c.baseUrl||p.baseUrl;
+ $("burlw").hidden=!p.custom&&p.id!=="deepseek"&&p.id!=="openai";$("pnote").textContent=p.note||"";$("navp").textContent=p.label+" · "+($("model").value||p.model);store.set("prov",p.id)}
+function saveCfg(){cfgs[cur().id]={key:$("key").value,model:$("model").value,baseUrl:$("burl").value};store.set("cfgs",cfgs)}
+["prov"].forEach(i=>$(i).onchange=loadCfg);["key","model","burl"].forEach(i=>$(i).oninput=()=>{saveCfg();$("navp").textContent=cur().label+" · "+$("model").value});loadCfg();
+document.querySelectorAll("#hint button").forEach(b=>b.onclick=()=>{hint=b.dataset.v;document.querySelectorAll("#hint button").forEach(x=>x.classList.toggle("on",x===b))});
+
+function shrink(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,1024/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*s;c.height=im.height*s;c.getContext("2d").drawImage(im,0,0,c.width,c.height);res({url:c.toDataURL("image/jpeg",.85)});URL.revokeObjectURL(u)};im.onerror=()=>rej(new Error("Cannot read image"));im.src=u})}
+async function addFiles(fl){for(const f of fl){if(!f.type.startsWith("image/"))continue;try{const s=await shrink(f);items.push({name:f.name,url:s.url,id:items.length})}catch(e){}}render();$("bar").hidden=!items.length}
+$("pick").onclick=()=>$("files").click();$("files").onchange=e=>addFiles(e.target.files);
+$("drop").ondragover=e=>{e.preventDefault();$("drop").classList.add("hov")};$("drop").ondragleave=()=>$("drop").classList.remove("hov");
+$("drop").ondrop=e=>{e.preventDefault();$("drop").classList.remove("hov");addFiles(e.dataTransfer.files)};
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function field(label,val,lim,path){const n=val.length,over=lim&&n>lim;return `<div class="f"><b>${label} <span class="cnt ${over?"over":""}">${lim?n+"/"+lim:n}</span></b><textarea data-p="${path}" rows="${val.length>90?3:1}">${esc(val)}</textarea></div>`}
+function render(){$("list").innerHTML=items.map((it,i)=>{const m=it.meta,body=it.err?`<div class="err">${esc(it.err)}</div>`:it.busy?"Working…":m?`
+ <div><span class="tag ${m.content_type==="template_pack"?"tp":""}">${m.content_type==="template_pack"?"Template pack":"Single asset"}</span><span class="tag">${esc(m.category_suggestion)}</span></div>
+ ${field("Adobe title",m.platforms.adobe.title,70,i+".adobe.title")}
+ <div class="f"><b>Adobe keywords <span class="cnt">${m.platforms.adobe.keywords.length}/49</span></b><textarea data-p="${i}.adobe.kw" class="kw" rows="3">${esc(m.platforms.adobe.keywords.join(", "))}</textarea></div>
+ ${m.flags.map(f=>`<div class="flag">⚠ ${esc(f)}</div>`).join("")}
+ <details><summary>Other platforms and raw description</summary>
+  ${field("Shutterstock description",m.platforms.shutterstock.description,200,i+".ss.d")}
+  ${field("Freepik title",m.platforms.freepik.title,70,i+".fp.t")}
+  ${field("iStock title",m.platforms.istock.title,70,i+".is.t")}<pre>${esc(m.description)}</pre></details>`:"Queued";
+ return `<div class="panel item"><img src="${it.url}" alt=""><div><b>${esc(it.name)}</b>${body}</div></div>`}).join("");
+ $("list").querySelectorAll("textarea").forEach(t=>t.onchange=()=>{const[i,pl,f]=t.dataset.p.split("."),p=items[i].meta.platforms;
+  if(pl==="adobe"){if(f==="title")p.adobe.title=t.value;else p.adobe.keywords=cleanKw(t.value,49,items[i].meta.content_type)}
+  else if(pl==="ss")p.shutterstock.description=t.value;else if(pl==="fp")p.freepik.title=t.value;else p.istock.title=t.value});
+ const d=items.filter(i=>i.meta).length;$("stat").textContent=`${d}/${items.length} done`}
+
+async function work(it){const p=cur(),c=cfgs[p.id]||{key:$("key").value,model:$("model").value,baseUrl:$("burl").value};
+ c.model=c.model||p.model;it.busy=true;it.err=null;render();
+ try{const raw=await callProvider(p,c,buildSystem(hint),"Classify and generate metadata for this image.",it.url);it.meta=normalize(raw,hint)}
+ catch(e){it.err=(e.message==="Failed to fetch"?"Network/CORS error. Check the key, base URL, and that this provider allows browser requests.":e.message)}
+ it.busy=false;render()}
+$("run").onclick=async()=>{if(!$("key").value){alert("Enter an API key for "+cur().label);return}
+ const todo=items.filter(i=>!i.meta);let n=0;await Promise.all([0,1,2].map(async()=>{while(n<todo.length)await work(todo[n++])}))};
+$("exp").onclick=()=>{const pl=$("plat").value,{csv,warn}=buildCsv(items,pl);if(warn.length&&!confirm(warn.join("\n")+"\n\nExport anyway?"))return;
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download=pl+"-metadata.csv";a.click()};
+</script></body></html>
