@@ -1,0 +1,16 @@
+{
+  "name": "metadata-that-ranks",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Microstock metadata generator with an automatic Gemini model fallback chain",
+  "type": "module",
+  "scripts": {
+    "dev": "node serve.mjs",
+    "test": "node tests/fallback.test.mjs && node tests/ui.smoke.test.mjs",
+    "test:core": "node tests/fallback.test.mjs",
+    "test:ui": "node tests/ui.smoke.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.1"
+  }
+}
