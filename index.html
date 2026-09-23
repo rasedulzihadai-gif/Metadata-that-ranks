@@ -39,13 +39,33 @@ button.p{background:var(--acc);color:#fff;font-weight:500;padding:11px 26px}butt
 .item>div>b{font-size:17px;font-weight:600;display:block;margin-bottom:8px;word-break:break-all}
 .tag{display:inline-block;font-size:13px;padding:3px 11px;border-radius:980px;background:var(--fill);color:var(--mute);margin:0 6px 6px 0}
 .tag.tp{background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-weight:500}
+.tag.via{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
 .flag{color:var(--warn);font-size:14px;margin-top:6px}.err{color:var(--bad)}
 .f{margin:12px 0 0}.f b{font-size:13px;color:var(--mute);font-weight:500;display:flex;justify-content:space-between;margin:0 2px 6px}
 .f textarea{width:100%;resize:vertical;min-height:44px;line-height:1.4}
 .cnt{font-size:13px;color:var(--mute);font-weight:400}.cnt.over{color:var(--bad)}
 details{margin-top:14px}details summary{cursor:pointer;color:var(--acc);font-size:15px}
 pre{white-space:pre-wrap;font:14px/1.5 inherit;font-family:inherit;color:var(--mute);background:var(--fill);padding:14px;border-radius:12px;margin:12px 0 0}
-@media(max-width:640px){.item{grid-template-columns:1fr}.item img{width:100%;height:200px}.hero{padding-top:48px}.panel{padding:20px}#bar{border-radius:22px}}
+/* model chain */
+#chainwrap .hrow{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+#chainwrap .hrow b{font-size:17px;font-weight:600}
+.mrow{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:14px}
+#chain .mrow:last-child{border-bottom:0}
+.mrow code{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--fill);padding:3px 9px;border-radius:8px;white-space:nowrap}
+.pill{font-size:12px;padding:2px 10px;border-radius:980px;background:var(--fill);color:var(--mute);white-space:nowrap}
+.pill.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.pill.bad{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--mute);flex:none}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}.dot.warn{background:var(--warn)}
+.grow{flex:1 1 auto;min-width:8px}
+.why{color:var(--mute);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52%}
+.mrow button{padding:4px 12px;font-size:13px;border:1px solid var(--line)}
+#log{max-height:220px;overflow:auto;margin-top:6px}
+#log div{font-size:13px;color:var(--mute);padding:4px 0;border-bottom:1px solid var(--line)}
+#log div:last-child{border-bottom:0}
+#log b{font-weight:500;color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+@media(max-width:640px){.item{grid-template-columns:1fr}.item img{width:100%;height:200px}.hero{padding-top:48px}.panel{padding:20px}#bar{border-radius:22px}.why{display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
 <nav class="nav"><b>Metadata Studio</b><span id="navp"></span></nav>
@@ -56,13 +76,23 @@ pre{white-space:pre-wrap;font:14px/1.5 inherit;font-family:inherit;color:var(--m
 
 <section class="panel"><div class="row">
  <div><label for="prov">Provider</label><select id="prov"></select></div>
- <div><label for="key">API key</label><input id="key" type="password" autocomplete="off" placeholder="Paste your key"></div>
- <div><label for="model">Model</label><input id="model"></div>
- <div id="burlw"><label for="burl">Base URL</label><input id="burl"></div>
+ <div style="flex:1 1 320px"><label for="key">API key(s)</label><input id="key" type="password" autocomplete="off" placeholder="Paste your key — several keys, comma separated, rotate automatically"></div>
+</div>
+<div class="row" style="margin-top:16px">
+ <div style="flex:1 1 280px"><label for="model">Model</label><input id="model" placeholder="auto"></div>
+ <div style="flex:1 1 240px" id="burlw"><label for="burl">Base URL</label><input id="burl"></div>
+ <button id="scan">Check models</button>
 </div>
 <div style="margin-top:22px"><label>Content type</label><div class="seg" id="hint">
  <button data-v="" class="on">Auto-detect</button><button data-v="single_asset">Single background</button><button data-v="template_pack">Template / design pack</button></div></div>
 <p class="cnt" id="pnote"></p></section>
+
+<section class="panel" id="chainwrap" hidden>
+ <div class="hrow"><div><b>Model fallback chain</b><div class="cnt" id="chainnote" style="margin-top:4px"></div></div>
+ <div><button id="scan2">Check models</button><button id="reset">Reset status</button></div></div>
+ <div id="chain"></div>
+ <details id="logwrap"><summary>Activity log</summary><div id="log"></div></details>
+</section>
 
 <div class="panel row" id="bar" hidden>
  <button class="p" id="run">Generate metadata</button>
@@ -75,15 +105,21 @@ pre{white-space:pre-wrap;font:14px/1.5 inherit;font-family:inherit;color:var(--m
 
 <script id="core">
 /* ---------- Provider registry ---------- */
+/* Static chains are only a fallback: every provider is re-listed live from its own
+   /models endpoint when the app can, so new models appear without a code change. */
+const GEMINI_STATIC=["gemini-3.8-flash","gemini-3.7-flash","gemini-3.6-flash","gemini-3.5-flash","gemini-3.5-flash-lite","gemini-3.1-flash-lite","gemini-2.5-flash","gemini-2.5-flash-lite","gemini-2.0-flash","gemini-flash-latest","gemini-flash-lite-latest"];
 const PROVIDERS=[
- {id:"deepseek",label:"DeepSeek",wire:"openai",baseUrl:"https://api.deepseek.com/v1",model:"deepseek-flash",
-  note:"Default. Native vision via image_url; the old deepseek-v4-flash-vision-exp ID also still routes here."},
- {id:"gemini",label:"Google Gemini",wire:"gemini",baseUrl:"https://generativelanguage.googleapis.com/v1beta",model:"gemini-2.5-flash"},
- {id:"anthropic",label:"Anthropic Claude",wire:"anthropic",baseUrl:"https://api.anthropic.com/v1",model:"claude-sonnet-5"},
- {id:"openai",label:"OpenAI",wire:"openai",baseUrl:"https://api.openai.com/v1",model:"gpt-4o"},
- ...["xKiro","Vyce","Helyx","AgentRouter","SeekAi"].map(n=>({id:n.toLowerCase(),label:n+" (gateway)",wire:"openai",baseUrl:"",model:"",custom:true,note:"OpenAI-compatible gateway: enter its base URL and model."}))
+ {id:"gemini",label:"Google Gemini",wire:"gemini",baseUrl:"https://generativelanguage.googleapis.com/v1beta",model:"auto",models:GEMINI_STATIC,custom:true,
+  note:'Free tier. “auto” lists every model your key can use and tries them best-first; a model that is out of quota, retired, rate-limited or unable to read images is skipped automatically and the next one takes over — mid-run, per image. Type model names here (comma separated) to pin your own order in front of the chain.'},
+ {id:"deepseek",label:"DeepSeek",wire:"openai",baseUrl:"https://api.deepseek.com/v1",model:"auto",models:["deepseek-chat","deepseek-reasoner"],custom:true,
+  note:'OpenAI-compatible. “auto” discovers the models this key can use, then falls back down the chain.'},
+ {id:"openai",label:"OpenAI",wire:"openai",baseUrl:"https://api.openai.com/v1",model:"auto",models:["gpt-4o","gpt-4o-mini"],custom:true,
+  note:'“auto” discovers your models and falls back down the chain.'},
+ {id:"anthropic",label:"Anthropic Claude",wire:"anthropic",baseUrl:"https://api.anthropic.com/v1",model:"auto",models:["claude-sonnet-4-5","claude-3-7-sonnet-latest","claude-3-5-haiku-latest"],custom:true,
+  note:'“auto” lists the models this key can use and falls back down the chain.'},
+ ...["xKiro","Vyce","Helyx","AgentRouter","SeekAi"].map(n=>({id:n.toLowerCase(),label:n+" (gateway)",wire:"openai",baseUrl:"",model:"auto",models:[],custom:true,note:"OpenAI-compatible gateway: enter its base URL. “auto” lists the models it offers and falls back down the chain."}))
 ];
-const DEFAULT_PROVIDER="deepseek";
+const DEFAULT_PROVIDER="gemini";
 
 /* ---------- Platform limits ---------- */
 const LIM={adobe:{title:70,kw:49},shutterstock:{desc:200,kw:50},freepik:{title:70,kw:30},istock:{title:70,desc:200,kw:50}};
@@ -163,22 +199,238 @@ function buildCsv(items,pl){
  return{csv:[head,...rows].join("\r\n"),warn};
 }
 
-/* ---------- Provider adapters ---------- */
-async function callProvider(p,cfg,system,text,dataUrl){
- const b64=dataUrl.split(",")[1],mime=dataUrl.slice(5,dataUrl.indexOf(";"));
- const base=(cfg.baseUrl||p.baseUrl).replace(/\/$/,"");let r,j;
- if(p.wire==="openai"){
-  r=await fetch(base+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+cfg.key},
-   body:JSON.stringify({model:cfg.model,temperature:0.4,response_format:{type:"json_object"},messages:[{role:"system",content:system},{role:"user",content:[{type:"text",text},{type:"image_url",image_url:{url:dataUrl}}]}]})});
-  j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);return j.choices[0].message.content}
- if(p.wire==="gemini"){
-  r=await fetch(`${base}/models/${encodeURIComponent(cfg.model)}:generateContent?key=${encodeURIComponent(cfg.key)}`,{method:"POST",headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:[{role:"user",parts:[{text},{inline_data:{mime_type:mime,data:b64}}]}],generationConfig:{responseMimeType:"application/json",temperature:0.4}})});
-  j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);return j.candidates[0].content.parts.map(x=>x.text||"").join("")}
- r=await fetch(base+"/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":cfg.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-  body:JSON.stringify({model:cfg.model,max_tokens:2000,system,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text}]}]})});
- j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);return j.content.map(x=>x.text||"").join("")
+/* ================= Model fallback engine =================
+   One job: never answer "model not working" when any other model could have
+   answered. Every provider gets an ordered chain; a failure on one model moves
+   to the next one automatically, for the same image, inside the same run. */
+const NON_CHAT=/(^|[-_])(embedding|embed|aqa|imagen|veo|tts|audio|live|music|transcribe|whisper|dall|moderation|rerank|bge|clip|image|images|robotics|computer|video)([-_]|$)/i;
+const CHAIN={models:{},keyCursor:{},discovered:{},discovering:{},log:[],lastGood:{}};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const baseModel=id=>String(id||"").replace(/^models\//,"").trim();
+const parseKeys=s=>[...new Set(String(s||"").split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean))];
+const mstate=(pid,m)=>CHAIN.models[pid+"::"+m]||(CHAIN.models[pid+"::"+m]={status:"ready",uses:0,until:0,reason:""});
+function resetStatus(){for(const k in CHAIN.models)delete CHAIN.models[k];CHAIN.keyCursor={};CHAIN.log=[]}
+
+/* Rank = quality order: newer generation first, flash over flash-lite, pro over both,
+   preview/experimental models behind their stable siblings, unknown families last. */
+function rankModel(id){
+ const s=String(id||"").toLowerCase();let sc=0;
+ const v=s.match(/gemini-(\d+)(?:\.(\d+))?/);
+ if(v)sc+=(+v[1])*100+(+(v[2]||0))*10;
+ if(/flash-lite|lite|8b|-mini|nano/.test(s))sc+=0;
+ else if(/flash/.test(s))sc+=80;
+ else if(/pro|ultra|opus|sonnet|o[1-9]\b|gpt-5/.test(s))sc+=120;
+ else sc-=200;
+ if(/preview|exp\b|experimental|beta/.test(s))sc-=55;
+ if(/latest/.test(s))sc+=5;
+ return sc;
 }
+function modelPool(p,cfg){
+ const typed=String(cfg.model||"").split(/[\n,;]+/).map(baseModel).filter(x=>x&&x.toLowerCase()!=="auto");
+ const disc=(CHAIN.discovered[p.id]||[]).map(baseModel);
+ const discChat=disc.filter(m=>!NON_CHAT.test(m)),discOdd=disc.filter(m=>NON_CHAT.test(m));
+ const seen=new Set(),out=[];
+ const push=(m,score)=>{m=baseModel(m);if(!m||seen.has(m.toLowerCase()))return;seen.add(m.toLowerCase());out.push({model:m,score})};
+ typed.forEach((m,i)=>push(m,1e6-i));                       // what the user typed, in order
+ discChat.slice().sort((a,b)=>rankModel(b)-rankModel(a)).forEach(m=>push(m,rankModel(m)));
+ if(!discChat.length)(p.models||[]).forEach(m=>push(m,rankModel(m)));   // no live list: use the built-in one
+ discOdd.slice().sort((a,b)=>rankModel(b)-rankModel(a)).forEach(m=>push(m,rankModel(m)-1e4));
+ return out.sort((a,b)=>b.score-a.score).map(x=>x.model);
+}
+function chainFor(p,cfg){return modelPool(p,cfg||{})}
+function chainStatus(p,cfg){
+ const now=Date.now();
+ return chainFor(p,cfg).map(m=>{const st=mstate(p.id,m);return{model:m,status:st.status,uses:st.uses,
+  waitMs:st.until>now?st.until-now:0,reason:st.reason,ready:!st.dead&&st.until<=now}});
+}
+
+/* ---------- Transport ---------- */
+function apiErr(status,msg,body){const e=new Error(msg||("HTTP "+status));e.status=status;e.body=body;return e}
+async function fetchT(url,opts,ms){
+ const ac=typeof AbortController!=="undefined"?new AbortController():null;
+ const t=ac?setTimeout(()=>ac.abort(),ms||120000):null;
+ try{return await fetch(url,{...opts,signal:ac?ac.signal:undefined})}
+ catch(e){const to=ac&&/abort/i.test(String(e&&e.name)+String(e&&e.message));
+  const err=new Error(to?"Request timed out after "+Math.round((ms||120000)/1000)+"s":"Network/CORS blocked this request ("+((e&&e.message)||e)+")");err.net=true;throw err}
+ finally{ac&&clearTimeout(t)}
+}
+function retryAfterMs(body){
+ let d=body&&body.error&&body.error.details;
+ if(Array.isArray(d))for(const x of d){if(x&&x.retryDelay!=null){const s=parseFloat(String(x.retryDelay));if(!isNaN(s))return s*1000}}
+ const m=String((body&&body.error&&body.error.message)||"").match(/retry(?:\s+in)?\s+([\d.]+)\s*s/i);
+ return m?parseFloat(m[1])*1000:0;
+}
+const quotaIsDaily=(body,msg)=>/per\s?day|perday|daily|requests per day|rpd/i.test(JSON.stringify(body||{})+" "+msg);
+function classifyError(e){
+ const st=(e&&e.status)||0,msg=String((e&&e.message)||"");
+ if(e&&e.net)return{kind:"net"};
+ if(!st)return{kind:"net"};
+ if(st===401)return{kind:"auth"};
+ if(st===403)return/not supported|not found|does not support|permission.*model|model.*permission/i.test(msg)?{kind:"model"}:{kind:"auth"};
+ if(st===429)return{kind:"quota",retryAfterMs:retryAfterMs(e.body),daily:quotaIsDaily(e.body,msg)};
+ if(st===404)return{kind:"model"};
+ if(st===400&&/api[\s_-]?key/i.test(msg))return{kind:"auth"};
+ if(st===400&&/(not found|does not exist|not supported|unsupported|unable to process input image|invalid image|image input|does not support|no longer available|deprecated|not available|is not available)/i.test(msg))return{kind:"model"};
+ if(st===400||st===422)return{kind:"payload"};
+ if(st>=500)return{kind:"transient"};
+ return{kind:"other"};
+}
+
+/* ---------- Model discovery (live list, so new models show up by themselves) ---------- */
+async function discover(p,cfg){
+ const keys=parseKeys(cfg.key);
+ if(!keys.length)throw new Error("Enter an API key first");
+ const key=keys[(CHAIN.keyCursor[p.id]||0)%keys.length];
+ const base=String(cfg.baseUrl||p.baseUrl||"").replace(/\/+$/,"");
+ let ids=[];
+ if(p.wire==="gemini"){
+  const r=await fetchT(base+"/models?pageSize=1000",{headers:{"x-goog-api-key":key}},25000);
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw apiErr(r.status,(j.error&&j.error.message)||("HTTP "+r.status),j);
+  ids=(j.models||[]).filter(m=>!(m.supportedGenerationMethods&&m.supportedGenerationMethods.length)||m.supportedGenerationMethods.includes("generateContent")).map(m=>baseModel(m.name));
+ }else if(p.wire==="anthropic"){
+  const r=await fetchT(base+"/models?limit=100",{headers:{"x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}},25000);
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw apiErr(r.status,(j.error&&j.error.message)||("HTTP "+r.status),j);
+  ids=(j.data||[]).map(m=>baseModel(m.id));
+ }else{
+  const r=await fetchT(base+"/models",{headers:{Authorization:"Bearer "+key}},25000);
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw apiErr(r.status,(j.error&&j.error.message)||("HTTP "+r.status),j);
+  ids=(j.data||[]).filter(m=>m&&!m.deleted).map(m=>baseModel(m.id)).filter(m=>m&&!NON_CHAT.test(m));
+ }
+ CHAIN.discovered[p.id]=[...new Set(ids.filter(Boolean))];
+ return CHAIN.discovered[p.id];
+}
+function ensureDiscovered(p,cfg){
+ if(CHAIN.discovered[p.id])return Promise.resolve(CHAIN.discovered[p.id]);
+ if(!CHAIN.discovering[p.id])CHAIN.discovering[p.id]=discover(p,cfg).catch(()=>null).finally(()=>{CHAIN.discovering[p.id]=null});
+ return CHAIN.discovering[p.id];
+}
+
+/* ---------- One attempt against one model ---------- */
+async function callModel(p,cfg,model,key,variant,req){
+ const base=String(cfg.baseUrl||p.baseUrl||"").replace(/\/+$/,"");
+ const mime=req.dataUrl.slice(5,req.dataUrl.indexOf(";")),b64=req.dataUrl.split(",")[1];
+ const json={"Content-Type":"application/json"};
+ if(p.wire==="gemini"){
+  const body={systemInstruction:{parts:[{text:req.system}]},contents:[{role:"user",parts:[{text:req.text},{inline_data:{mime_type:mime,data:b64}}]}],
+   generationConfig:{maxOutputTokens:8192,...(variant?{}:{temperature:0.4,responseMimeType:"application/json"})}};
+  const r=await fetchT(base+"/models/"+encodeURIComponent(model)+":generateContent",{method:"POST",headers:{...json,"x-goog-api-key":key},body:JSON.stringify(body)},120000);
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw apiErr(r.status,(j.error&&j.error.message)||("HTTP "+r.status),j);
+  if(j.promptFeedback&&j.promptFeedback.blockReason)throw apiErr(200,"Blocked by the safety filter ("+j.promptFeedback.blockReason+")",j);
+  const c=(j.candidates||[])[0];
+  if(!c)throw apiErr(200,"The model returned no answer",j);
+  if(/MAX_TOKENS/i.test(c.finishReason||""))throw apiErr(200,"Answer cut off (MAX_TOKENS)",j);
+  const out=((c.content&&c.content.parts)||[]).filter(x=>x&&x.text&&x.thought!==true).map(x=>x.text).join("");
+  if(!out.trim())throw apiErr(200,"Empty answer"+(c.finishReason?" ("+c.finishReason+")":""),j);
+  return out;
+ }
+ if(p.wire==="openai"){
+  const body={model,messages:[{role:"system",content:req.system},{role:"user",content:[{type:"text",text:req.text},{type:"image_url",image_url:{url:req.dataUrl}}]}],
+   ...(variant?{}:{temperature:0.4,response_format:{type:"json_object"}})};
+  const r=await fetchT(base+"/chat/completions",{method:"POST",headers:{...json,Authorization:"Bearer "+key},body:JSON.stringify(body)},120000);
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw apiErr(r.status,(j.error&&j.error.message)||(j.message)||("HTTP "+r.status),j);
+  const msg=(j.choices||[])[0]&&(j.choices||[])[0].message;
+  const out=(msg&&msg.content)||"";
+  if(!String(out).trim())throw apiErr(200,"Empty answer",j);
+  return out;
+ }
+ const body={model,max_tokens:variant?4096:8192,...(variant?{}:{temperature:0.4}),system:req.system,
+  messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mime,data:b64}},{type:"text",text:req.text}]}]};
+ const r=await fetchT(base+"/messages",{method:"POST",headers:{...json,"x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify(body)},120000);
+ const j=await r.json().catch(()=>({}));
+ if(!r.ok)throw apiErr(r.status,(j.error&&j.error.message)||("HTTP "+r.status),j);
+ const out=(j.content||[]).map(x=>x&&x.text||"").join("");
+ if(!out.trim())throw apiErr(200,"Empty answer with stop_reason "+(j.stop_reason||"?"),j);
+ return out;
+}
+async function attempt(p,cfg,model,key,variant,req){
+ try{return await callModel(p,cfg,model,key,variant,req)}
+ catch(e1){
+  const c=classifyError(e1);
+  if(c.kind==="transient"||c.kind==="net"){                 // one breathe, then same model again
+   await sleep(600+Math.random()*700);
+   try{return await callModel(p,cfg,model,key,variant,req)}catch(e2){throw e2}
+  }
+  throw e1;
+ }
+}
+
+/* ---------- The fallback runner ---------- */
+function explainFailures(tried,p){
+ if(!tried.length)return "All models in the chain are cooling down or retired. Open “Model fallback chain”, hit Reset status, or add another API key.";
+ const seen=new Set(),lines=[];
+ for(const t of tried){const k=t.model+"|"+t.kind;if(seen.has(k))continue;seen.add(k);
+  lines.push("• "+t.model+" — "+({auth:"key rejected",model:"not available to this key",quota:"out of quota / rate limited",payload:"rejected the request shape",transient:"server busy",net:"cannot be reached (network or CORS)",other:"failed"}[t.kind]||t.kind)+": "+String(t.error).slice(0,120))}
+ return "Every model in the chain failed for "+p.label+".\n"+lines.join("\n")+"\nCheck the key, or add a second key separated by a comma.";
+}
+async function generate(p,cfg,req,onEvent){
+ const keys=parseKeys(cfg.key);
+ if(!keys.length)throw new Error("Enter an API key for "+p.label);
+ if(!CHAIN.discovered[p.id]){                       // list the live models once per session
+  try{const n=await ensureDiscovered(p,cfg);if(n&&n.length)onEvent&&onEvent({t:"info",msg:n.length+" models listed for "+p.label})}
+  catch(e){onEvent&&onEvent({t:"info",msg:"Model list unavailable ("+e.message+"), using the built-in chain"})}
+ }
+ const order=chainFor(p,cfg);
+ if(!order.length)throw new Error("No models to try. Enter a model name or a base URL that lists models.");
+ const tried=[],keysDead=new Set();
+ let sawDead=false;
+ for(const model of order){
+  const st=mstate(p.id,model),now=Date.now();
+  if(st.dead){sawDead=true;onEvent&&onEvent({t:"skip",model,msg:"skipped: "+st.reason});continue}
+  if(st.until>now){sawDead=true;onEvent&&onEvent({t:"skip",model,msg:"cooling "+Math.ceil((st.until-now)/1000)+"s"});continue}
+  let nextModel=false;
+  for(let ki=0;ki<keys.length&&!nextModel;ki++){
+   const idx=((CHAIN.keyCursor[p.id]||0)+ki)%keys.length;
+   if(keysDead.has(idx))continue;
+   const key=keys[idx];
+   for(let variant=0;variant<2&&!nextModel;variant++){
+    try{
+     const raw=await attempt(p,cfg,model,key,variant,req);
+     st.status="ok";st.uses++;st.until=0;st.reason="";CHAIN.keyCursor[p.id]=idx;CHAIN.lastGood[p.id]=model;
+     onEvent&&onEvent({t:"ok",model,msg:"ok"+(keys.length>1?" (key "+(idx+1)+"/"+keys.length+")":"")});
+     return{raw,model,key};
+    }catch(e){
+     const c=classifyError(e);
+     tried.push({model,kind:c.kind,error:e.message});
+     onEvent&&onEvent({t:"fail",model,msg:({auth:"key rejected",model:"not available",quota:"out of quota",payload:"bad request shape",transient:"server busy",net:"unreachable",other:"failed"}[c.kind]||c.kind)+": "+String(e.message).slice(0,110)});
+     if(c.kind==="payload"&&variant===0)continue;                    // retry once with a minimal body
+     if(c.kind==="model"){st.dead=true;st.status="dead";st.reason=String(e.message).slice(0,90);nextModel=true;break}
+     if(c.kind==="auth"){keysDead.add(idx);if(keys.length>1)onEvent&&onEvent({t:"info",msg:"switching API key"});break}
+     if(c.kind==="quota"){
+      if(!c.daily&&ki<keys.length-1)break;                          // another key may have its own quota
+      st.status="cooling";st.reason=c.daily?"daily quota":"rate limit";
+      st.until=Date.now()+Math.max(c.retryAfterMs||0,c.daily?6*3600*1000:20000);
+      nextModel=true;break;
+     }
+     if(ki<keys.length-1)break;                                     // try the next key on transient/net/other
+     nextModel=true;break;
+    }
+   }
+  }
+ }
+ if(keysDead.size>=keys.length&&tried.every(t=>t.kind==="auth"))throw new Error("Every API key was rejected by "+p.label+". Check for a typo, or that the key is enabled for the Gemini/OpenAI API.");
+ throw new Error(explainFailures(tried,p));
+}
+/* tiny, cheap probe used by the “test” button in the chain list */
+async function probeModel(p,cfg,model){
+ const keys=parseKeys(cfg.key);if(!keys.length)throw new Error("Enter an API key first");
+ const key=keys[(CHAIN.keyCursor[p.id]||0)%keys.length];
+ const base=String(cfg.baseUrl||p.baseUrl||"").replace(/\/+$/,"");
+ const tiny={system:"You are a health check.",text:"Reply with the single word: ok",dataUrl:"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=="};
+ try{const raw=await callModel(p,cfg,model,key,1,tiny);const st=mstate(p.id,model);st.status="ok";st.uses++;st.until=0;st.reason="";return{ok:true,note:"answered"}}
+ catch(e){const c=classifyError(e),st=mstate(p.id,model);
+  if(c.kind==="model"){st.dead=true;st.status="dead";st.reason=String(e.message).slice(0,90)}
+  else if(c.kind==="quota"){st.status="cooling";st.reason=c.daily?"daily quota":(c.retryAfterMs?"retry in "+Math.ceil(c.retryAfterMs/1000)+"s":"rate limit");st.until=Date.now()+Math.max(c.retryAfterMs||0,c.daily?6*3600*1000:20000)}
+  else if(c.kind==="auth"){st.status="dead";st.dead=true;st.reason="key rejected"}
+  else{st.status="warn";st.reason=String(e.message).slice(0,90)}
+  return{ok:false,cause:c.kind,note:String(e.message).slice(0,140)}}
+}
+/* exposed for the console, and for the test harness in tests/ */
+globalThis.__MM={PROVIDERS,CHAIN,chainFor,chainStatus,discover,ensureDiscovered,generate,probeModel,classifyError,rankModel,parseKeys,normalize,buildSystem,buildCsv,mstate,resetStatus,callModel};
 </script>
 
 <script id="ui">
@@ -189,22 +441,52 @@ const cfgs=store.get("cfgs")||{};
 $("prov").innerHTML=PROVIDERS.map(p=>`<option value="${p.id}">${p.label}${p.id===DEFAULT_PROVIDER?" (default)":""}</option>`).join("");
 $("prov").value=store.get("prov")||DEFAULT_PROVIDER;
 const cur=()=>PROVIDERS.find(p=>p.id===$("prov").value);
-function loadCfg(){const p=cur(),c=cfgs[p.id]||{};$("key").value=c.key||"";$("model").value=c.model||p.model;$("burl").value=c.baseUrl||p.baseUrl;
- $("burlw").hidden=!p.custom&&p.id!=="deepseek"&&p.id!=="openai";$("pnote").textContent=p.note||"";$("navp").textContent=p.label+" · "+($("model").value||p.model);store.set("prov",p.id)}
+function cfgOf(p){const c=cfgs[p.id]||{};return{key:$("key").value,model:$("model").value,baseUrl:$("burl").value}}
+function loadCfg(){const p=cur(),c=cfgs[p.id]||{};$("key").value=c.key||"";$("model").value=c.model||"auto";$("burl").value=c.baseUrl||p.baseUrl;
+ $("pnote").textContent=p.note||"";store.set("prov",p.id);renderChain()}
 function saveCfg(){cfgs[cur().id]={key:$("key").value,model:$("model").value,baseUrl:$("burl").value};store.set("cfgs",cfgs)}
-["prov"].forEach(i=>$(i).onchange=loadCfg);["key","model","burl"].forEach(i=>$(i).oninput=()=>{saveCfg();$("navp").textContent=cur().label+" · "+$("model").value});loadCfg();
+$("prov").onchange=loadCfg;
+["key","model","burl"].forEach(i=>$(i).oninput=()=>{saveCfg();$("navp").textContent=cur().label+" · "+($("model").value||"auto")});
 document.querySelectorAll("#hint button").forEach(b=>b.onclick=()=>{hint=b.dataset.v;document.querySelectorAll("#hint button").forEach(x=>x.classList.toggle("on",x===b))});
+loadCfg();
 
+/* ---------- model chain panel ---------- */
+let chainTimer=null;
+function chainRenderSoon(){clearTimeout(chainTimer);chainTimer=setTimeout(renderChain,220)}
+function fmtWait(ms){ms=Math.max(0,ms);if(ms<60000)return Math.ceil(ms/1000)+"s";if(ms<3600000)return Math.ceil(ms/60000)+"m";return Math.ceil(ms/3600000)+"h"}
+function renderChain(){
+ const p=cur(),list=chainStatus(p,cfgOf(p));
+ $("chainwrap").hidden=false;
+ const ready=list.filter(x=>x.ready).length,bad=list.filter(x=>!x.ready).length;
+ const found=CHAIN.discovered[p.id];
+ $("chainnote").textContent=`${list.length} models · ${ready} ready${bad?` · ${bad} skipped`:""}${found?` · listed live from ${p.label}`:" · built-in list (hit Check models to list live)"}`+(CHAIN.lastGood[p.id]?` · last answer from ${CHAIN.lastGood[p.id]}`:"");
+ $("chain").innerHTML=list.map(x=>{
+  const cls=x.status==="dead"?"bad":(x.status==="cooling"||x.status==="warn")?"warn":x.status==="ok"?"ok":"";
+  const label=x.status==="dead"?"not available":x.status==="cooling"?"cooling "+fmtWait(x.waitMs):x.status==="ok"?"working"+(x.uses>1?` ×${x.uses}`:""):x.status==="warn"?"error":"not tried";
+  return `<div class="mrow"><span class="dot ${cls}"></span><code>${x.model}</code><span class="pill ${cls}">${label}</span><span class="grow"></span><span class="why" title="${(x.reason||"").replace(/"/g,"&quot;")}">${x.reason||""}</span><button data-m="${x.model}">test</button></div>`}).join("")||`<div class="cnt">No models yet — enter a key and hit Check models.</div>`;
+ $("chain").querySelectorAll("button[data-m]").forEach(b=>b.onclick=async()=>{const m=b.dataset.m;b.textContent="…";
+  const r=await probeModel(cur(),cfgOf(cur()),m);addLog({t:r.ok?"ok":"fail",model:m,msg:r.ok?"health check ok":"health check: "+r.note});b.textContent="test";renderChain()});
+}
+function addLog(ev){const time=new Date().toLocaleTimeString();CHAIN.log.unshift({time,...ev});if(CHAIN.log.length>80)CHAIN.log.pop();
+ $("log").innerHTML=CHAIN.log.map(e=>`<div>${e.time} · ${e.model?`<b>${e.model}</b> · `:""}${esc(e.msg||e.t)}</div>`).join("");chainRenderSoon()}
+$("scan").onclick=$("scan2").onclick=async()=>{const p=cur();const btn=$("scan");btn.textContent="Listing…";
+ try{const ids=await discover(p,cfgOf(p));addLog({t:"info",msg:`${ids.length} models listed for ${p.label}`})}
+ catch(e){addLog({t:"fail",msg:"Could not list models: "+e.message})}
+ btn.textContent="Check models";renderChain()};
+$("reset").onclick=()=>{resetStatus();$("log").innerHTML="";renderChain()};
+
+/* ---------- upload ---------- */
 function shrink(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,1024/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*s;c.height=im.height*s;c.getContext("2d").drawImage(im,0,0,c.width,c.height);res({url:c.toDataURL("image/jpeg",.85)});URL.revokeObjectURL(u)};im.onerror=()=>rej(new Error("Cannot read image"));im.src=u})}
 async function addFiles(fl){for(const f of fl){if(!f.type.startsWith("image/"))continue;try{const s=await shrink(f);items.push({name:f.name,url:s.url,id:items.length})}catch(e){}}render();$("bar").hidden=!items.length}
 $("pick").onclick=()=>$("files").click();$("files").onchange=e=>addFiles(e.target.files);
 $("drop").ondragover=e=>{e.preventDefault();$("drop").classList.add("hov")};$("drop").ondragleave=()=>$("drop").classList.remove("hov");
 $("drop").ondrop=e=>{e.preventDefault();$("drop").classList.remove("hov");addFiles(e.dataTransfer.files)};
 
+/* ---------- results ---------- */
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function field(label,val,lim,path){const n=val.length,over=lim&&n>lim;return `<div class="f"><b>${label} <span class="cnt ${over?"over":""}">${lim?n+"/"+lim:n}</span></b><textarea data-p="${path}" rows="${val.length>90?3:1}">${esc(val)}</textarea></div>`}
-function render(){$("list").innerHTML=items.map((it,i)=>{const m=it.meta,body=it.err?`<div class="err">${esc(it.err)}</div>`:it.busy?"Working…":m?`
- <div><span class="tag ${m.content_type==="template_pack"?"tp":""}">${m.content_type==="template_pack"?"Template pack":"Single asset"}</span><span class="tag">${esc(m.category_suggestion)}</span></div>
+function render(){$("list").innerHTML=items.map((it,i)=>{const m=it.meta,body=it.err?`<div class="err">${esc(it.err).replace(/\n/g,"<br>")}</div>`:it.busy?`Working…${it.attempts&&it.attempts.length?` <span class="cnt">(${esc(it.attempts[it.attempts.length-1].model||"")})</span>`:""}`:m?`
+ <div><span class="tag ${m.content_type==="template_pack"?"tp":""}">${m.content_type==="template_pack"?"Template pack":"Single asset"}</span><span class="tag">${esc(m.category_suggestion)}</span>${m.model?`<span class="tag via">via ${esc(m.model)}</span>`:""}</div>
  ${field("Adobe title",m.platforms.adobe.title,70,i+".adobe.title")}
  <div class="f"><b>Adobe keywords <span class="cnt">${m.platforms.adobe.keywords.length}/49</span></b><textarea data-p="${i}.adobe.kw" class="kw" rows="3">${esc(m.platforms.adobe.keywords.join(", "))}</textarea></div>
  ${m.flags.map(f=>`<div class="flag">⚠ ${esc(f)}</div>`).join("")}
@@ -216,15 +498,24 @@ function render(){$("list").innerHTML=items.map((it,i)=>{const m=it.meta,body=it
  $("list").querySelectorAll("textarea").forEach(t=>t.onchange=()=>{const[i,pl,f]=t.dataset.p.split("."),p=items[i].meta.platforms;
   if(pl==="adobe"){if(f==="title")p.adobe.title=t.value;else p.adobe.keywords=cleanKw(t.value,49,items[i].meta.content_type)}
   else if(pl==="ss")p.shutterstock.description=t.value;else if(pl==="fp")p.freepik.title=t.value;else p.istock.title=t.value});
- const d=items.filter(i=>i.meta).length;$("stat").textContent=`${d}/${items.length} done`}
+ const d=items.filter(i=>i.meta).length;$("stat").textContent=`${d}/${items.length} done`+(CHAIN.lastGood[cur().id]?` · via ${CHAIN.lastGood[cur().id]}`:"")}
 
-async function work(it){const p=cur(),c=cfgs[p.id]||{key:$("key").value,model:$("model").value,baseUrl:$("burl").value};
- c.model=c.model||p.model;it.busy=true;it.err=null;render();
- try{const raw=await callProvider(p,c,buildSystem(hint),"Classify and generate metadata for this image.",it.url);it.meta=normalize(raw,hint)}
- catch(e){it.err=(e.message==="Failed to fetch"?"Network/CORS error. Check the key, base URL, and that this provider allows browser requests.":e.message)}
- it.busy=false;render()}
-$("run").onclick=async()=>{if(!$("key").value){alert("Enter an API key for "+cur().label);return}
- const todo=items.filter(i=>!i.meta);let n=0;await Promise.all([0,1,2].map(async()=>{while(n<todo.length)await work(todo[n++])}))};
+/* ---------- run ---------- */
+async function work(it){
+ const p=cur(),cfg=cfgOf(p);
+ it.busy=true;it.err=null;it.attempts=[];let bounced=false;render();
+ try{
+  const{raw,model}=await generate(p,cfg,{system:buildSystem(hint),text:"Classify and generate metadata for this image.",dataUrl:it.url},
+   ev=>{if(ev.t==="fail"||ev.t==="skip"){it.attempts.push(ev);bounced=true;addLog(ev)}
+       else if(ev.t==="info")addLog(ev)
+       else if(ev.t==="ok"&&bounced)addLog(ev)});
+  it.meta=normalize(raw,hint);it.meta.model=model;
+ }catch(e){it.err=e.message}
+ it.busy=false;render()
+}
+$("run").onclick=async()=>{if(!parseKeys($("key").value).length){alert("Enter an API key for "+cur().label);return}
+ const todo=items.filter(i=>!i.meta);let n=0;await Promise.all([0,1,2].map(async()=>{while(n<todo.length)await work(todo[n++])}));renderChain()};
 $("exp").onclick=()=>{const pl=$("plat").value,{csv,warn}=buildCsv(items,pl);if(warn.length&&!confirm(warn.join("\n")+"\n\nExport anyway?"))return;
  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download=pl+"-metadata.csv";a.click()};
+$("navp").textContent=cur().label+" · "+($("model").value||"auto");
 </script></body></html>
